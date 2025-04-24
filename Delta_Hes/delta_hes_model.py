@@ -242,7 +242,7 @@ def findneigbours(index, P, Q):
     return neighbours
 
 # Iteration functions of the system
-def simulate(num_tsteps, dt, lattice, params, hill_coeff, coupling_type = 'Delta', initial_type = 'checkerboard'):
+def simulate(num_tsteps, dt, lattice, params, coupling_type = 'Delta', initial_type = 'checkerboard'):
     '''Runs the simulation of the model for a given number of time steps and time step size, other variables are the type of coupling in the system and the initialisation type.
 
     Inputs:
@@ -300,7 +300,7 @@ def simulate(num_tsteps, dt, lattice, params, hill_coeff, coupling_type = 'Delta
         if coupling_type == 'Delta':
             d_tau_neighbours = d_neighbours(d_delay[i,:,:], lattice)
             d[i+1,:,:] = Euler(d[i,:,:], dd_dt(d[i,:,:], m_d[i,:,:], params), dt)
-            m_d[i+1,:,:] = Euler(m_d[i,:,:], dmd_dt(m_d[i,:,:], h_delay[i,:,:], params, hill_coeff), dt)
+            m_d[i+1,:,:] = Euler(m_d[i,:,:], dmd_dt(m_d[i,:,:], h_delay[i,:,:], params), dt)
             couple_component = hill_function_positive(d_tau_neighbours, int(params.n), params.p_d)
         
         elif coupling_type == 'Averaging':
@@ -364,7 +364,7 @@ def dd_dt(d, m_d, params):
     """
     return m_d - params.gamma_d*d
 
-def dmd_dt(m_d, h_delay, params, hill_coeff):
+def dmd_dt(m_d, h_delay, params):
     """Computes the time derivative of Delta mRNA based on the model equations, the current state of the system, the type of coupling implemented and the delay of the system
     Parameters:
     m_d: array containing current state of Delta mRNA for all cells
@@ -374,7 +374,7 @@ def dmd_dt(m_d, h_delay, params, hill_coeff):
     Returns:
     dmd/dt : array containing time derivation of Delta mRNA for all cells
     """
-    return hill_function_negative(h_delay, int(hill_coeff), params.p_h) - params.gamma_m*m_d
+    return hill_function_negative(h_delay, params.l, params.p_h) - params.gamma_m*m_d
 
 def d_neighbours(values, lattice):
     '''Calculates the values of the neighouring Delta for each cell in the lattice.
