@@ -3,7 +3,7 @@ from types import SimpleNamespace
 from tqdm import tqdm
 
 # Initialisation functions of the system
-def get_initial(lattice, params, initial_type = 'checkerboard'):
+def get_initial(lattice, params, initial_type = 'checkerboard', initial_val2 = None):
     '''Get initial condition for the system
     
     Input: 
@@ -30,7 +30,7 @@ def get_initial(lattice, params, initial_type = 'checkerboard'):
         h0 = np.zeros([lattice.P, lattice.Q]) 
 
     elif initial_type == 'checkerboard':
-        h0 = create_checkerboard(lattice.P, lattice.Q, val1=0, val2= 1/params.gamma_h) # checkerboard pattern of Hes initial condition
+        h0 = create_checkerboard(lattice.P, lattice.Q, val1=0, val2=initial_val2) # checkerboard pattern of Hes initial condition
 
     # set the initial condition for m_h0 and m_d0    
     m_h0 = np.zeros([lattice.P, lattice.Q])
@@ -242,7 +242,7 @@ def findneigbours(index, P, Q):
     return neighbours
 
 # Iteration functions of the system
-def simulate(num_tsteps, dt, lattice, params, coupling_type = 'Delta', initial_type = 'checkerboard'):
+def simulate(num_tsteps, dt, lattice, params, coupling_type = 'Delta', initial_type = 'checkerboard', initial_val2 = None):
     '''Runs the simulation of the model for a given number of time steps and time step size, other variables are the type of coupling in the system and the initialisation type.
 
     Inputs:
@@ -267,7 +267,12 @@ def simulate(num_tsteps, dt, lattice, params, coupling_type = 'Delta', initial_t
         raise ValueError('dt must be smaller than the Hes gradient strength')
     
     # set up the initial conditions
-    h_init, m_h_init, d_init, m_d_init = get_initial(lattice, params, initial_type)
+    if initial_type == 'checkerboard':
+
+        h_init, m_h_init, d_init, m_d_init = get_initial(lattice, params, initial_type, initial_val2)
+
+    elif initial_type == 'uniform':
+        h_init, m_h_init, d_init, m_d_init = get_initial(lattice, params, initial_type)
 
     #intrinsic oscillator components
     h = np.zeros([num_tsteps, lattice.P, lattice.Q])
@@ -283,7 +288,10 @@ def simulate(num_tsteps, dt, lattice, params, coupling_type = 'Delta', initial_t
         d[0] = d_init
 
     elif coupling_type == 'Averaging':
-        print('Error: Averaging coupling not implemented yet')
+        m_d = np.zeros([num_tsteps, lattice.P, lattice.Q])
+        d = np.zeros([num_tsteps, lattice.P, lattice.Q])
+        m_d[0] = m_d_init
+        d[0] = d_init
 
     # iterate through the time steps and calculate the values of the next time step
     for i in tqdm(range(int(num_tsteps-1))):
@@ -304,7 +312,9 @@ def simulate(num_tsteps, dt, lattice, params, coupling_type = 'Delta', initial_t
             couple_component = hill_function_positive(d_tau_neighbours, int(params.n), params.p_d)
         
         elif coupling_type == 'Averaging':
-            print('Error: Averaging coupling not implemented yet')
+            h_average = np.mean(h_delay[i,:,:], axis=0) # average of the delayed values of Hes
+            couple_component = h_average - h[i,:,:]
+            # print('Error: Averaging coupling not implemented yet')
 
         # calculate the values of the next time step for Hes and Hes mRNA
         h[i+1,:,:] = Euler(h[i,:,:], dh_dt(h[i,:,:], m_h[i,:,:], params), dt)
@@ -386,10 +396,7 @@ def d_neighbours(values, lattice):
     d_neighbours: the values of the neighbouring Delta variables for each cell in the lattice'''
 
     # set the axis over which the sum is to be taken
-    if lattice.Q == 1:
-        axis = 0
-    else:
-        axis = 1
+    axis = 1
 
     d_neighbours = np.sum(lattice.connectivity * values.flatten() / lattice.w.flatten(), axis=axis)
     d_neighbours = d_neighbours.reshape(lattice.P, lattice.Q)
