@@ -20,7 +20,7 @@ Goal is to find parameters to constrain the later more complex systems with to g
 
     Measure: when lateral inhibition, behaviour before lateral inhibition
 
-5. See if the fully function 2 cell system works synchronising. 
+5. See if the fully function 2 cell system works synchronisingly or not. 
 
 ## 1D system of cells 
 
