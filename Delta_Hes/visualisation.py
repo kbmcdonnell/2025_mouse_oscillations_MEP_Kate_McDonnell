@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from IPython.display import HTML
+import matplotlib.cm as cm
 
 
 def animate_2D(data, interval=5, plot_save=False, filename='Animation_grid.gif', title = ''):
@@ -55,3 +56,38 @@ def animate_2D(data, interval=5, plot_save=False, filename='Animation_grid.gif',
     # Convert animation to HTML for Jupyter Notebook
     return HTML(ani.to_jshtml())
 
+def get_distinguishable_ylgn_colors(k, min_val=0.3, max_val=0.8):
+    """
+    Returns k distinguishable colors from the 'YlGn' colormap,
+    avoiding very light (near white) colors for better contrast on white backgrounds.
+
+    Parameters:
+    - k: Number of colors.
+    - min_val: Minimum position in the colormap (0 = lightest, 1 = darkest).
+    - max_val: Maximum position in the colormap.
+    """
+    assert 0 <= min_val < max_val <= 1, "min_val and max_val must be in (0, 1]"
+    cmap = cm.get_cmap('YlGn')
+    values = np.linspace(min_val, max_val, k)
+    colors = [cmap(v) for v in values]
+    return colors
+
+def get_two_colormaps(k, avoid_white=True):
+    """
+    Returns two lists of k colors each:
+    - One from the 'Blues' colormap
+    - One from the 'Reds' colormap
+    Colors are spaced and trimmed to avoid white and black extremes.
+    """
+    # Trim range to avoid white (too light) and near-black (too dark)
+    min_val, max_val = (0.3, 0.85) if avoid_white else (0.0, 1.0)
+    sample_points = np.linspace(min_val, max_val, k)
+
+    blues_cmap = plt.cm.Blues(sample_points)
+    reds_cmap = plt.cm.Reds(sample_points)
+
+    # Convert to RGB tuples (remove alpha)
+    blues_rgb = [tuple(color[:3]) for color in blues_cmap]
+    reds_rgb = [tuple(color[:3]) for color in reds_cmap]
+
+    return blues_rgb, reds_rgb

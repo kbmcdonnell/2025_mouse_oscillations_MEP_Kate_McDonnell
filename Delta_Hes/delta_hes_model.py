@@ -323,6 +323,87 @@ def simulate(num_tsteps, dt, lattice, params, coupling_type = 'Delta', initial_t
 
     return h, m_h, d, m_d   
 
+def simulate_fixed_delta(num_tsteps, dt, external_delta, lattice, params):
+    # h_init, m_h_init, d_init, m_d_init = get_initial(lattice, params, initial_type = 'checkerboard', initial_val2=300)
+    h_init, m_h_init, d_init, m_d_init = get_initial(lattice, params, initial_type = 'uniform')
+
+    #intrinsic oscillator components
+    h = np.zeros([num_tsteps, lattice.P, lattice.Q])
+    m_h = np.zeros([num_tsteps, lattice.P, lattice.Q])
+    d = np.zeros([num_tsteps, lattice.P, lattice.Q])
+    m_d = np.zeros([num_tsteps, lattice.P, lattice.Q])
+
+    h[0] = h_init
+    m_h[0] = m_h_init
+    d[0] = d_init
+    m_d[0] = m_d_init
+
+    # iterate through the time steps and calculate the values of the next time step
+    for i in tqdm(range(int(num_tsteps-1))):
+
+        # calculate delayed values of Hes
+        params.T_h_steps = np.round(params.T_h / dt).astype(int)
+        h_delay = get_delayed_value(h, i, params.T_h_steps, lattice, params)
+
+        d[i+1,:,:] = Euler(d[i,:,:], dd_dt(d[i,:,:], m_d[i,:,:], params), dt)
+        m_d[i+1,:,:] = Euler(m_d[i,:,:], dmd_dt(m_d[i,:,:], h_delay[i,:,:], params), dt)
+
+        couple_component = external_delta/params.w_coupling
+        
+        # calculate the values of the next time step for Hes and Hes mRNA
+        h[i+1,:,:] = Euler(h[i,:,:], dh_dt(h[i,:,:], m_h[i,:,:], params), dt)
+        m_h[i+1,:,:] = Euler(m_h[i,:,:], dmh_dt(m_h[i,:,:], h_delay[i,:,:], couple_component, params, lattice), dt)
+
+    return h, m_h, d, m_d
+
+def simulate_oscillating_delta(num_tsteps, dt, external_delta, coupling_delay, lattice, params):
+    # h_init, m_h_init, d_init, m_d_init = get_initial(lattice, params, initial_type = 'checkerboard', initial_val2=300)
+    h_init, m_h_init, d_init, m_d_init = get_initial(lattice, params, initial_type = 'uniform')
+
+    #intrinsic oscillator components
+    h = np.zeros([num_tsteps, lattice.P, lattice.Q]) 
+    m_h = np.zeros([num_tsteps, lattice.P, lattice.Q])
+    d = np.zeros([num_tsteps, lattice.P, lattice.Q])
+    m_d = np.zeros([num_tsteps, lattice.P, lattice.Q])
+
+    h[0] = h_init
+    m_h[0] = m_h_init
+    d[0] = d_init
+    m_d[0] = m_d_init
+
+    # iterate through the time steps and calculate the values of the next time step
+    for i in tqdm(range(int(num_tsteps-1))):
+
+        # calculate delayed values of Hes
+        params.T_h_steps = np.round(params.T_h / dt).astype(int)
+
+        h_delay = get_delayed_value(h, i, params.T_h_steps, lattice, params)
+
+        d[i+1,:,:] = Euler(d[i,:,:], dd_dt(d[i,:,:], m_d[i,:,:], params), dt)
+        m_d[i+1,:,:] = Euler(m_d[i,:,:], dmd_dt(m_d[i,:,:], h_delay[i,:,:], params), dt)
+
+        couple_components = external_delta/params.w_coupling
+
+        # calculate delay in the coupling (no delay gives a value of 0)
+        if coupling_delay == 0:
+            couple_component = couple_components[i]
+        else:
+            T_coup_steps = np.round(coupling_delay / dt).astype(int)
+       
+            if i < T_coup_steps:
+                couple_component = couple_components[0]  
+            else:
+                couple_component = couple_components[i - T_coup_steps]       
+    
+        # calculate the values of the next time step for Hes and Hes mRNA
+        h[i+1,:,:] = Euler(h[i,:,:], dh_dt(h[i,:,:], m_h[i,:,:], params), dt)
+        m_h[i+1,:,:] = Euler(m_h[i,:,:], dmh_dt(m_h[i,:,:], h_delay[i,:,:], couple_component, params, lattice), dt)
+
+    return h, m_h, d, m_d
+
+def external_delta_oscillator(num_tsteps, dt, period, external_strength):
+    return external_strength*(np.sin(np.arange(num_tsteps) * dt * 2 * np.pi / period) + 1)
+
 def Euler(x, dx_dt, dt):
     """ Performs the Euler method for numerical integration.
     Parameters:
@@ -451,3 +532,23 @@ def hill_function_negative(x, coeff, threshold):
     Returns:
     - Computed value based on the Hill function."""
     return threshold**coeff / (threshold**coeff + x**coeff)
+
+def nullclines_Hes(m_h, h, p_h, l, gamma_h, gamma_m):
+    """Calculate the nullclines for Hes."""
+    # Hes protein nullcline
+    h_null = gamma_h**(-1)*m_h
+    
+    # Hes mRNA nullcline
+    m_h_null = gamma_m**(-1) * p_h**l / (p_h**l + h**l)
+
+    return h_null, m_h_null
+
+def nullclines_Hes_deltabath(m_h, h, D_ext, p_h, l, gamma_h, gamma_m):
+    """Calculate the nullclines for Hes."""
+    # Hes protein nullcline
+    h_null = gamma_h**(-1)*m_h
+    
+    # Hes mRNA nullcline
+    m_h_null = gamma_m**(-1) * p_h**l / (p_h**l + h**l) + gamma_m**(-1)*D_ext
+
+    return h_null, m_h_null

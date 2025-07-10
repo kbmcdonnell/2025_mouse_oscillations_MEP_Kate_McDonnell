@@ -1,29 +1,24 @@
-# thesis
-Code for Master Thesis with Bauer Group sept 2024 - juli 2025
+Master Thesis KB McDonnell with Marianne Bauer Group sept 2024 - juli 2025, TU Delft
 
+Welcome to the Github for my thesis project. 
 
-# Dream outline of the project 
+This github contains all my coding work done for this project. The main focus of the project ended up being the Delta-Hes model. 
+But briefly: the phase model folder contains a delayed kuramoto-like phase model, the data analysis is done for data on single cell Hes oscillations of 
 
-Building up in complexity of the system: 
+Delta-Hes folder is structured as follows: 
 
-## One cell internal
-1. One cell case of Hes oscillations. Show the necessity to have delay in the Hes oscillations, otherwise it converges to a fixed stable state, we need the Hopf bifurcation 
+It contains 3 python .py files. These contain all the functions used in the project. 
+delta_hes_model.py: contains all simulation functions
+analysis.py: contains all functions to obtain observables from the simulation functions
+visualisation.py: contains tools to visualise the data with particular colormaps or to make animations
 
-## Isolated cell interactions
-Goal is to find parameters to constrain the later more complex systems with to get desirable properties. 
+Then there are a number of Jupyter Notebook .ipynb files that run the simulations, calculate observables and plot results for the various sub-models discussed in the report
+internal_oscillator.ipynb: runs all code for the internal oscillator
+external_delta_source.ipynb: runs all code for the external delta source
+two_coupled_cells.ipynb: runs all code for the two coupled cells system
+1D_coupled_cells.ipynb: runs all code for the 1D array of coupled cells system 
 
-2. Isolated coupling between two cells (handle the stability case of two cells without Hes dynamics, only Delta) --> link to results from the 2 cell case without any delay in Hes. Vary p_d and hill coefficient in the coupling n. Do we see the states that the cells remain in the same state.
-3. Use a single cell with Hes dynamics in a bath of Delta to see what the behaviour of the Hes dynamics are with in practice a steady source term in the mRNA differential equation.
-4. Investigate a fully function 2 cell system, so including Hes dynamics, to see under which parameters this system in synchronised an when it laterally inhibits. Also, to see if it plays a role in synchronising the system. (or do small pertubations cause a lateral inhibition to occur very fast). 
-    - Look at effects of n and pd
-    - Look at effects of delay on oscillations of this system 
+Then there are two Jupyter Notebook files that animate different systems: for a 1D system (simulate_1D.ipynb) and a 2D system (simulate_2D.ipynb)
 
-    Measure: when lateral inhibition, behaviour before lateral inhibition
-
-5. See if the fully function 2 cell system works synchronisingly or not. 
-
-## 1D system of cells 
-
-6. Look at decay, period, amplitude, mean expression level and lateral inhibition of system (undelayed in coupling)
-7. Look at the effects on these observables with the addition of a uniform delay in the system 
-8. 
+comparison-two-cell.npz: is a data file which contains information on the period of the two cell case to be able to compare periods of the 1D case in 1D_coupled_cells.ipynb
+report_plotting_misc.ipynb: contains a couple of plots for the report
