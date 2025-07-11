@@ -1,3 +1,6 @@
+""" This module provides functions to simulate the Delta-Hes model: initialisation, simulation (for fully coupled cells and cells with an external Delta source) 
+and calculation of nullclines. """
+
 import numpy as np
 from types import SimpleNamespace
 from tqdm import tqdm
@@ -195,7 +198,7 @@ def connectivitymatrix(P, Q):
 
 def findneigbours(index, P, Q):
     '''Finds neighbours of cell with index for system of P, Q cells
-    Parameters: 
+    Input :
     index: index of the cell
     P: number of cells in the system in the length direction
     Q: number of cells in the system in the width direction
@@ -247,11 +250,12 @@ def simulate(num_tsteps, dt, lattice, params, coupling_type = 'Delta', initial_t
 
     Inputs:
     num_tsteps: number of time steps to simulate
-    dt: time step size
+    dt: size of time step
     lattice: SimpleNamespace object containing the structure of the system
     params: SimpleNamespace object containing the parameters of the system
     coupling_type: type of coupling in the system, either 'Delta or 'Averaging' 
     initial_type: type of initialisation, either 'checkerboard' or 'uniform'
+    initial_val2: second value for the checkerboard initialisation, if None then it is set to 5
 
     Returns:
     h: Hes values for each cell at each time step (num_tsteps, P, Q)
@@ -402,6 +406,18 @@ def simulate_oscillating_delta(num_tsteps, dt, external_delta, coupling_delay, l
     return h, m_h, d, m_d
 
 def external_delta_oscillator(num_tsteps, dt, period, external_strength):
+    """Generates an oscillating external Delta source for the simulation.
+    
+    Inputs:
+    num_tsteps: number of time steps to generate the oscillation for
+    dt: time step size
+    period: period of the oscillation in minutes
+    external_strength: strength of the oscillation, amplitude of the sine wave
+    
+    Returns:
+    array of shape num_tsteps containing the oscillating external Delta source values
+    """
+
     return external_strength*(np.sin(np.arange(num_tsteps) * dt * 2 * np.pi / period) + 1)
 
 def Euler(x, dx_dt, dt):
@@ -534,7 +550,20 @@ def hill_function_negative(x, coeff, threshold):
     return threshold**coeff / (threshold**coeff + x**coeff)
 
 def nullclines_Hes(m_h, h, p_h, l, gamma_h, gamma_m):
-    """Calculate the nullclines for Hes."""
+    """Calculate the nullclines for Hes network for the internal oscillator equation.
+    
+    Inputs : 
+    m_h: array of Hes mRNA concentrations
+    h: array of Hes protein concentrations
+    p_h: threshold concentration of Hes Hill function repression
+    l: Hill function coefficient for Hes repression
+    gamma_h: decay rate of Hes protein
+    gamma_m: decay rate of Hes mRNA
+    
+    Returns:
+    h_null: array of Hes protein nullcline values
+    m_h_null: array of Hes mRNA nullcline values
+    """
     # Hes protein nullcline
     h_null = gamma_h**(-1)*m_h
     
@@ -544,7 +573,21 @@ def nullclines_Hes(m_h, h, p_h, l, gamma_h, gamma_m):
     return h_null, m_h_null
 
 def nullclines_Hes_deltabath(m_h, h, D_ext, p_h, l, gamma_h, gamma_m):
-    """Calculate the nullclines for Hes."""
+    """Calculate the nullclines for Hes network for the internal oscillator with external Delta source equation.
+    
+    Inputs : 
+    m_h: array of Hes mRNA concentrations
+    h: array of Hes protein concentrations
+    D_ext: external Delta source value
+    p_h: threshold concentration of Hes Hill function repression
+    l: Hill function coefficient for Hes repression
+    gamma_h: decay rate of Hes protein
+    gamma_m: decay rate of Hes mRNA
+    
+    Returns:
+    h_null: array of Hes protein nullcline values
+    m_h_null: array of Hes mRNA nullcline values
+    """
     # Hes protein nullcline
     h_null = gamma_h**(-1)*m_h
     

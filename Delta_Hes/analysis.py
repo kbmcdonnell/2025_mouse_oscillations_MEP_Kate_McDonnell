@@ -1,3 +1,5 @@
+"""This module provides functions to obtain observables from time signals, such as estimating periods and amplitudes from peaks, finding phase shifts, and calculating decay ratios. 
+It also includes functions for analysing simulation results of two-cell systems, for different initialisations and an inclusion of delay."""
 
 import numpy as np
 from scipy.signal import find_peaks
@@ -11,20 +13,16 @@ def estimate_period_from_peaks(signal, time=None, height=None, distance=None, pr
     - signal: 1D numpy array of the signal values
     - time: Optional 1D array of time values (same length as signal). If None, assume uniform time steps.
     - height, distance, prominence: Optional arguments passed to find_peaks
-    - ignore_initial_outlier: If True, ignores the first peak if it's a large outlier
 
     Returns:
-    - period: Estimated average period (float)
-    - peak_times: Time values of the detected peaks
+    - period: Estimated average period of the oscillation, if enough peaks are found; otherwise None.
+    - peak_times: Time values of the detected peaks in mins
     """
     # Find peaks
     peaks, _ = find_peaks(signal, height=height, distance=distance, prominence=prominence)
 
     if len(peaks) < 2:
         return None, np.array([])  # Not enough peaks to estimate period
-
-    # Optionally remove initial outlier peak
-    peak_vals = signal[peaks]
 
     # Assume uniform spacing if time is not given
     if time is None:
@@ -41,14 +39,13 @@ def estimate_period_from_peaks(signal, time=None, height=None, distance=None, pr
 
     return period, peak_times
 
-def estimate_amplitude_from_peaks(signal, height=None, distance=500, prominence=None):
+def estimate_amplitude_from_peaks(signal, height=None, distance=None, prominence=None):
     """
     Estimate the amplitude of an oscillating signal using peak and trough detection.
 
     Parameters:
     - signal: 1D numpy array of the signal values
     - height, distance, prominence: Optional arguments passed to find_peaks
-    - ignore_initial_outlier: If True, automatically ignore first peak/trough if it's a large outlier
 
     Returns:
     - amplitude: Estimated average amplitude (float)
@@ -72,27 +69,38 @@ def estimate_amplitude_from_peaks(signal, height=None, distance=500, prominence=
 
     return amplitude, peak_indices[:min_len], trough_indices[:min_len]
 
-def find_shift(parameter1, parameter2):
+def find_shift(variable1, variable2):
     """Find the phase shift in time between two variables by finding the closest peak value of variable 1 to each value in variable 2.
-      If two peaks of variable 1 are both set on the same peak for variable 2, the one with the smallest distance is kept and the others are set to NaN."""
+      If two peaks of variable 1 are both set on the same peak for variable 2, the one with the smallest distance is kept and the others are set to NaN.
+      
+      Inputs:
+      - variable1: 1D numpy array of the first variable (e.g., peaks of h0)
+      - variable2: 1D numpy array of the second variable (e.g., peaks of h1)
+      
+      Returns:
+      - shift: The average time shift in seconds between the two variables, calculated as the mean of the distances to the closest peaks."""
     dt = 0.2
 
-    parameter1 = np.array(parameter1)
-    parameter2 = np.array(parameter2)
+    variable1 = np.array(variable1)
+    variable2 = np.array(variable2)
 
     # set up array to store the closest peak index and the distance to the closest peak
-    closest = np.zeros(len(parameter2))
-    distances = np.zeros(len(parameter2))
+    closest = np.zeros(len(variable2))
+    distances = np.zeros(len(variable2))
 
-    if len(parameter1) == 0 or len(parameter2) == 0:
+    if len(variable1) == 0 or len(variable2) == 0:
         return np.nan
-    for k in range(len(parameter2)):
-        distance = parameter2[k] - parameter1
+    
+    # Loop through each value in variable2 and find the closest value in variable1
+    for k in range(len(variable2)):
+        distance = variable2[k] - variable1
         distance[distance < 0] = np.inf  # Ignore negative distances
-        # distance = np.abs(parameter2[k] - parameter1)
+
+        # Find the index and value of the closest value in variable1
         closest[k] = np.argmin(distance)
         distances[k] = np.min(distance)
 
+    # Filter out any duplicate closest peaks 
     unique, counts = np.unique(closest, return_counts=True)
     duplicates = unique[counts > 1]
 
@@ -116,7 +124,19 @@ def find_shift(parameter1, parameter2):
     return shift
 
 def mean_diff(result_diff, final_half = 8000):
-    # result_diff is a list of two arrays, the first one is h_diff and the second one is d_diff
+    """ Calculate the mean and standard deviation of the differences between two variables over the final part of the time steps. 
+    
+    Inputs:
+    - result_diff: A list containing two arrays, the first one is h_diff and the second one is d_diff, previously calculated as the absolute difference between two variables (e.g., h0 and h1, d0 and d1).
+    - final_half: The number of time steps to consider from the end of the time series
+    
+    Returns:
+    - mean_h_diff: Mean of the h_diff values over the final part of the time steps
+    - std_h_diff: Standard deviation of the h_diff values over the final part of the time steps
+    - mean_d_diff: Mean of the d_diff values over the final part of the time steps
+    - std_d_diff: Standard deviation of the d_diff values over the final part of the time steps
+    """
+
     h_diff = result_diff[0]
     d_diff = result_diff[1]
 
@@ -129,10 +149,21 @@ def mean_diff(result_diff, final_half = 8000):
     return mean_h_diff, std_h_diff, mean_d_diff, std_d_diff
 
 def decay_ratio(signal, time_frame=360, height=None, distance=None, prominence=None):
-    dt = 0.2  # Time step in seconds
+    """ Calculate the decay ratio of a time signal, by dividing two peak values that are separated by a minimum time frame. 
+
+    Parameters:
+    - signal: 1D numpy array of the time signal values.
+    - time_frame: Minimum time frame in seconds between the two peaks to consider for the decay ratio.
+    - height, distance, prominence: Optional arguments passed to find_peaks.
+
+    Returns: 
+    - decay_ratio: The ratio of the first peak value to the second peak value that is at least time_frame seconds away, or 100 if no such peak exists.
+    """
+    dt = 0.2  # Time step
+
     time_frame_steps = int(time_frame / dt)
 
-    # Detect peaks
+    # Find peaks
     peaks, _ = find_peaks(signal, height=height, distance=distance, prominence=prominence)
     
     if len(peaks) < 2:
@@ -160,13 +191,7 @@ def decay_ratio(signal, time_frame=360, height=None, distance=None, prominence=N
     
     return peak_values_start / peak_values_end
 
-def compute_and_plot_fft_spectrogram(
-    signal,
-    fs,
-    window_size,
-    cutoff_freq=None,
-    dc_removal_start_idx=10000
-):
+def compute_and_plot_fft_spectrogram(signal, fs, window_size, cutoff_freq=None, dc_removal_start_idx=10000):
     """
     Computes FFT spectra for sliding windows and plots:
     1. Spectral magnitudes (or power) as an image.
@@ -217,19 +242,46 @@ def compute_and_plot_fft_spectrogram(
     return fft_matrix, freqs, power_per_window
 
 def freqs_differences(fft_matrix, power):
+    """Calculate the differences in frequencies and power spectrum between the last time step and all previous time steps.
+     
+      Inputs:
+      - fft_matrix: 2D numpy array of shape (num_frequencies, num_time_steps) containing the FFT magnitudes.
+      - power: 1D numpy array of shape (num_time_steps,) containing the power spectrum for each time step.
+      
+      Returns:
+      - freq_diff: 1D numpy array of shape (num_time_steps,) containing the differences in frequencies.
+      - power_diff: 1D numpy array of shape (num_time_steps - 1,) containing the differences in power spectrum."""
     fft_matrix_normalised = fft_matrix / np.linalg.norm(fft_matrix, axis=0, keepdims=True)
     
     freq_diff = np.sum((fft_matrix_normalised - fft_matrix_normalised[:,-1][:,np.newaxis])**2, axis = 0)
     
     power_diff = (power[1:] - power[-1])**2
     return freq_diff, power_diff
+
 #######################################################################################################
 
 # functions to calculate all observables for a collection of simulations
 
 def analysis_2cells(results, time_settled, parameter1, parameter2):
     """Analyse the results of a two-cell simulations (shape parameter1 x variable 2 x num_tsteps x num_cells x 2) to extract observables such as period, amplitude, and mean values for a seperation 
-    of the cell into synchronised and laterally inhibited (LI) parts. This was used for two-cell simulations with a uniform initialisation"""
+    of the cell into synchronised and laterally inhibited (LI) parts. This was used for two-cell simulations with a uniform initialisation
+    
+    Inputs:
+    - results: 5D numpy array of shape (parameter1, parameter2, num_tsteps, num_cells, 2) containing the simulation results
+    - time_settled: Number of time steps to ignore at the beginning of the simulation to allow the system to settle
+    - parameter1: 1D numpy array of the first parameter values
+    - parameter2: 1D numpy array of the second parameter values
+    
+    Returns:
+    - result_diff: List containing the absolute differences between the two cells for h and d for each time step and parameter combination
+    - result_diff_LI_mean: List containing the mean of the absolute differences between the two cells for h and d for the LI part for each parameter combination
+    - result_LI_mean: List containing the mean values of h0, h1, d0, and d1 for the LI part for each parameter combination
+    - result_synced_index: List containing the first and last index of the synchronised part of the results for each parameter combination
+    - result_period_synced: List containing the period of the synchronised part of h0, h1, d0, and d1 for each parameter combination
+    - result_amplitude_synced: List containing the amplitude of the synchronised part of h0, h1, d0, and d1 for each parameter combination
+    - result_period_LI: List containing the period of the LI part of h0, h1, d0, and d1 for each parameter combination
+    - result_amplitude_LI: List containing the amplitude of the LI part of h0, h1, d0, and d1 for each parameter combination
+    """
 
     dt = 0.2
 
@@ -301,7 +353,20 @@ def analysis_2cells(results, time_settled, parameter1, parameter2):
 
 def analysis_2cells_checkerboard(results, time_settled, parameter1, parameter2):
     """Analyse the results of a two-cell simulations (shape parameter1 x variable 2 x num_tsteps x num_cells x 2) to extract observables such as period, amplitude, and mean values for a seperation 
-    of the cell into synchronised and laterally inhibited (LI) parts. This was used for two-cell simulations with a checkerboard initialisation"""
+    of the cell into synchronised and laterally inhibited (LI) parts. This was used for two-cell simulations with a checkerboard initialisation.
+    
+    Inputs:
+    - results: 5D numpy array of shape (parameter1, parameter2, num_tsteps, num_cells, 2) containing the simulation results
+    - time_settled: Number of time steps to ignore at the beginning of the simulation
+    - parameter1: 1D numpy array of the first parameter values
+    - parameter2: 1D numpy array of the second parameter values
+    
+    Returns:
+    - result_diff: List containing the absolute differences between the two cells for h and d for each time step and parameter combination
+    - result_mean_diff: List containing the mean of the absolute differences between the two cells for h and d for each parameter combination
+    - result_period: List containing the period of h0, h1, d0, and d1 for each parameter combination
+    - result_amplitude: List containing the amplitude of h0, h1, d0, and d1 for each parameter combination
+    - result_shift: List containing the phase shift between h0 and d0 for each parameter combination"""
 
     dt = 0.2
 
@@ -340,7 +405,21 @@ def analysis_2cells_checkerboard(results, time_settled, parameter1, parameter2):
 
 def analysis_2cells_delay(results, time_settled, parameter1, parameter2, dt=0.2):
     """Analyse the results of a two-cell simulations (shape parameter1 x variable 2 x num_tsteps x num_cells x 2) to extract observables such as period, amplitude, and mean values for a seperation 
-    of the cell into synchronised and laterally inhibited (LI) parts. This was used for two-cell simulations with a uniform initialisation and a coupling delay"""
+    of the cell into synchronised and laterally inhibited (LI) parts. This was used for two-cell simulations with a uniform initialisation and a coupling delay.
+    
+    Inputs:
+    - results: 5D numpy array of shape (parameter1, parameter2, num_tsteps, num_cells, 2) containing the simulation results
+    - time_settled: Number of time steps to ignore at the beginning of the simulation to allow the system to settle
+    - parameter1: 1D numpy array of the first parameter values
+    - parameter2: 1D numpy array of the second parameter values
+    - dt: Time step size in seconds (default is 0.2 seconds)
+    
+    Returns:
+    - result_diff: List containing the absolute differences between the two cells for h and d for each time step and parameter combination
+    - result_synced_index: List containing the first and last index of the synchronised part of the results for each parameter combination
+    - result_period_synced: List containing the period of the synchronised part of h0, h1, d0, and d1 for each parameter combination
+    - result_amplitude_synced: List containing the amplitude of the synchronised part of h0, h1, d0, and d1 for each parameter combination
+    - result_shift: List containing the phase shift between h0 and d0 for each parameter combination"""
 
     dt = 0.2
 

@@ -1,3 +1,5 @@
+""" This module provides functions to visualize 2D animations of grid data and generate distinguishable colors from colormaps."""
+
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
@@ -7,11 +9,14 @@ import matplotlib.cm as cm
 
 def animate_2D(data, interval=5, plot_save=False, filename='Animation_grid.gif', title = ''):
     """
-    Create a 2D animation of a grid from a 3D array.
+    Create a 2D animation of a grid from a 3D array (time x grid).
     
     Parameters:
     - data: 3D numpy array of shape (grid_size, grid_size, num_tsteps)
     - interval: Time between frames in milliseconds
+    - plot_save: If True, saves the animation as a GIF file
+    - filename: Name of the file to save the animation
+    - title: Title for the plot
     
     Returns:
     - HTML object to display in Jupyter Notebook
@@ -58,8 +63,7 @@ def animate_2D(data, interval=5, plot_save=False, filename='Animation_grid.gif',
 
 def get_distinguishable_ylgn_colors(k, min_val=0.3, max_val=0.8):
     """
-    Returns k distinguishable colors from the 'YlGn' colormap,
-    avoiding very light (near white) colors for better contrast on white backgrounds.
+    Returns k distinguishable colors from the 'YlGn' colormap.
 
     Parameters:
     - k: Number of colors.
