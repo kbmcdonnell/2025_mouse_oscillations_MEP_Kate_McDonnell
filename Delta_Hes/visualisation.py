@@ -5,7 +5,14 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from IPython.display import HTML
 import matplotlib.cm as cm
+from matplotlib.colors import LinearSegmentedColormap
 
+# Define colors
+colors = ['#fdc776', '#fc4e2a', '#8b1a0e']
+
+# Create colormap
+hes_cmap = LinearSegmentedColormap.from_list("hes_cmap", colors)
+plt.register_cmap(name='hes_cmap', cmap=hes_cmap)
 
 def animate_2D(data, interval=5, plot_save=False, filename='Animation_grid.gif', title = ''):
     """
@@ -75,6 +82,14 @@ def get_distinguishable_ylgn_colors(k, min_val=0.3, max_val=0.8):
     values = np.linspace(min_val, max_val, k)
     colors = [cmap(v) for v in values]
     return colors
+
+def get_hes_colors(k):
+    cmap = cm.get_cmap('hes_cmap')
+    values = np.linspace(0, 1, k)
+    colors = [cmap(v) for v in values]
+    return colors
+
+
 
 def get_two_colormaps(k, avoid_white=True):
     """
